@@ -439,7 +439,8 @@ input.addEventListener(
     segundoMensajeMostrado = true;
 
     setTimeout(() => {
-      const texto = "Perfecto 😊 ¿Cómo podemos ayudarte?";
+      const texto =
+        "Mensaje que se envia cuando el usuario interactua con la pagina";
 
       addMessage(texto, "received", {
         sender: "operador",

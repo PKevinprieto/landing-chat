@@ -287,7 +287,7 @@ io.on("connection", (socket) => {
         const messageUid = crypto.randomUUID();
 
         const textoBienvenida =
-          "Holaa, decime tu nombre o apodo y te creamos tu usuario enseguida, PORFAVOR MANTENETE EN ESTA PAGINA PARA QUE NOS PODAMOS SEGUIR COMUNICANDO, Gracias!";
+          "Holaa, como estas?👋✨ Decime un nombre o apodo asi te creo tu usuario😀";
 
         const mensajeBienvenida = {
           id: messageUid,
