@@ -49,6 +49,34 @@ imageInput.addEventListener("change", async () => {
 });
 
 let historialActual = [];
+let audioHabilitado = false;
+let audioContext = null;
+
+let segundoMensajeMostrado = false;
+
+function habilitarAudio() {
+  if (audioHabilitado) {
+    return;
+  }
+
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+  if (audioContext.state === "suspended") {
+    audioContext.resume();
+  }
+
+  audioHabilitado = true;
+
+  console.log("🔊 Sonido habilitado");
+}
+
+document.addEventListener("click", habilitarAudio, {
+  once: true,
+});
+
+document.addEventListener("touchstart", habilitarAudio, {
+  once: true,
+});
 // =========================
 // VISITOR ID
 // =========================
@@ -379,31 +407,47 @@ function renderTextWithLinks(container, text) {
   });
 }
 function reproducirSonidoNotificacion() {
-  try {
-    const audioContext = new (
-      window.AudioContext || window.webkitAudioContext
-    )();
-
-    const oscillator = audioContext.createOscillator();
-
-    const gain = audioContext.createGain();
-
-    oscillator.connect(gain);
-    gain.connect(audioContext.destination);
-
-    oscillator.frequency.value = 880;
-
-    gain.gain.setValueAtTime(0.15, audioContext.currentTime);
-
-    gain.gain.exponentialRampToValueAtTime(
-      0.001,
-      audioContext.currentTime + 0.3,
-    );
-
-    oscillator.start();
-
-    oscillator.stop(audioContext.currentTime + 0.3);
-  } catch (error) {
-    console.log("El navegador bloqueó el sonido automático");
+  if (!audioHabilitado || !audioContext) {
+    return;
   }
+
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+
+  oscillator.connect(gain);
+  gain.connect(audioContext.destination);
+
+  oscillator.frequency.value = 880;
+
+  gain.gain.setValueAtTime(0.15, audioContext.currentTime);
+
+  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+
+  oscillator.start();
+
+  oscillator.stop(audioContext.currentTime + 0.3);
 }
+input.addEventListener(
+  "focus",
+  () => {
+    habilitarAudio();
+
+    if (segundoMensajeMostrado) {
+      return;
+    }
+
+    segundoMensajeMostrado = true;
+
+    setTimeout(() => {
+      const texto = "Perfecto 😊 ¿Cómo podemos ayudarte?";
+
+      addMessage(texto, "received", {
+        sender: "operador",
+        kind: "text",
+      });
+
+      reproducirSonidoNotificacion();
+    }, 500);
+  },
+  { once: true },
+);
