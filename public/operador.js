@@ -512,7 +512,84 @@ let mensajeCitado = null;
 let ultimoMensajeTemporal = null;
 let conversacionActual = null;
 const mensajesNoLeidos = new Map();
+let intervaloNotificacion = null;
+let audioContextOperador = null;
+function obtenerAudioContextOperador() {
+  if (!audioContextOperador) {
+    audioContextOperador = new (
+      window.AudioContext || window.webkitAudioContext
+    )();
+  }
 
+  if (audioContextOperador.state === "suspended") {
+    audioContextOperador.resume();
+  }
+
+  return audioContextOperador;
+}
+
+function sonarNotificacionOperador() {
+  try {
+    const audioContext = obtenerAudioContextOperador();
+
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.frequency.value = 850;
+
+    gain.gain.setValueAtTime(0.16, audioContext.currentTime);
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.001,
+      audioContext.currentTime + 0.25,
+    );
+
+    oscillator.start();
+
+    oscillator.stop(audioContext.currentTime + 0.25);
+  } catch (error) {
+    console.log("No se pudo reproducir la notificación:", error);
+  }
+}
+
+function hayMensajesNoLeidos() {
+  for (const cantidad of mensajesNoLeidos.values()) {
+    if (cantidad > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function iniciarNotificacionRepetida() {
+  if (intervaloNotificacion) {
+    return;
+  }
+
+  sonarNotificacionOperador();
+
+  intervaloNotificacion = setInterval(() => {
+    if (!hayMensajesNoLeidos()) {
+      detenerNotificacionRepetida();
+      return;
+    }
+
+    sonarNotificacionOperador();
+  }, 1000);
+}
+
+function detenerNotificacionRepetida() {
+  if (!intervaloNotificacion) {
+    return;
+  }
+
+  clearInterval(intervaloNotificacion);
+  intervaloNotificacion = null;
+}
 // =========================
 // LISTA DE CONVERSACIONES
 // =========================
@@ -622,6 +699,9 @@ socket.on("operador:conversaciones", (conversaciones) => {
       form.style.display = "flex";
       actualizarHeaderContacto(conversacion);
       mensajesNoLeidos.set(conversacion.visitorId, 0);
+      if (!hayMensajesNoLeidos()) {
+        detenerNotificacionRepetida();
+      }
 
       console.log("Visitante seleccionado:", visitanteSeleccionado);
 
@@ -657,6 +737,8 @@ socket.on("operador:mensaje-cliente", (data) => {
 
     mensajesNoLeidos.set(data.visitorId, cantidadActual + 1);
 
+    iniciarNotificacionRepetida();
+
     return;
   }
 
@@ -671,6 +753,8 @@ socket.on("operador:imagen-cliente", (data) => {
     const cantidadActual = mensajesNoLeidos.get(data.visitorId) || 0;
 
     mensajesNoLeidos.set(data.visitorId, cantidadActual + 1);
+
+    iniciarNotificacionRepetida();
 
     return;
   }

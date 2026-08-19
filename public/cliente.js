@@ -439,8 +439,7 @@ input.addEventListener(
     segundoMensajeMostrado = true;
 
     setTimeout(() => {
-      const texto =
-        "Mensaje que se envia cuando el usuario interactua con la pagina";
+      const texto = "Dalee mucho gusto! Ya te lo paso!";
 
       addMessage(texto, "received", {
         sender: "operador",
