@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Panel Operador</title>
+
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="operador-body">
+    <main class="operador-panel">
+      <aside class="operador-sidebar">
+        <div class="sidebar-tabs">
+          <button
+            id="tab-conversaciones"
+            class="sidebar-tab active"
+            type="button"
+          >
+            Conversaciones
+          </button>
+
+          <button id="tab-atajos" class="sidebar-tab" type="button">
+            Atajos
+          </button>
+        </div>
+
+        <!-- CONVERSACIONES -->
+        <div id="seccion-conversaciones" class="sidebar-section">
+          <div id="conversation-list"></div>
+        </div>
+
+        <!-- ATAJOS -->
+        <div id="seccion-atajos" class="sidebar-section" style="display: none">
+          <div class="shortcuts-header">
+            <h3>Atajos</h3>
+
+            <button id="nuevo-atajo-btn" type="button">+ Nuevo</button>
+          </div>
+
+          <div id="shortcuts-list"></div>
+        </div>
+      </aside>
+
+      <section class="operador-chat">
+        <header class="operador-header" style="display: none">
+          <div>
+            <h2 id="operador-contact-name">Visitante</h2>
+            <p id="operador-contact-status">Conversación activa</p>
+          </div>
+
+          <button
+            id="editar-contacto-btn"
+            class="editar-contacto-btn"
+            type="button"
+            title="Editar contacto"
+            aria-label="Editar contacto"
+          >
+            ✎
+          </button>
+        </header>
+
+        <section id="operador-messages" class="operador-messages">
+          <div class="empty-chat">
+            <h3>Elegí una conversación</h3>
+            <p>Seleccioná un contacto para iniciar el chat.</p>
+          </div>
+        </section>
+
+        <form id="operador-form" class="operador-form" style="display: none">
+          <input
+            type="file"
+            id="operador-image-input"
+            accept="image/*"
+            hidden
+          />
+
+          <button
+            type="button"
+            id="operador-image-button"
+            class="image-button"
+            title="Enviar imagen"
+          >
+            <span>📎</span>
+          </button>
+          <button
+            id="emoji-button"
+            type="button"
+            class="operador-action-button"
+            title="Emojis"
+          >
+            😀
+          </button>
+          <div id="emoji-picker" class="emoji-picker">
+            <div class="emoji-picker-grid">
+              <button type="button">😀</button>
+              <button type="button">😂</button>
+              <button type="button">🤣</button>
+              <button type="button">😊</button>
+              <button type="button">😍</button>
+              <button type="button">🥰</button>
+              <button type="button">😎</button>
+              <button type="button">🤔</button>
+
+              <button type="button">👍</button>
+              <button type="button">👎</button>
+              <button type="button">👌</button>
+              <button type="button">👏</button>
+              <button type="button">🙌</button>
+              <button type="button">🙏</button>
+              <button type="button">💪</button>
+              <button type="button">👋</button>
+
+              <button type="button">❤️</button>
+              <button type="button">💚</button>
+              <button type="button">🔥</button>
+              <button type="button">✨</button>
+              <button type="button">🎉</button>
+              <button type="button">✅</button>
+              <button type="button">❌</button>
+              <button type="button">⭐</button>
+
+              <button type="button">📍</button>
+              <button type="button">📞</button>
+              <button type="button">📦</button>
+              <button type="button">💳</button>
+              <button type="button">💰</button>
+              <button type="button">📄</button>
+              <button type="button">📅</button>
+              <button type="button">🚚</button>
+            </div>
+          </div>
+          <button
+            id="operador-link-button"
+            type="button"
+            class="operador-action-button"
+            title="Enviar enlace"
+          >
+            🔗
+          </button>
+
+          <div id="reply-preview" class="reply-preview" style="display: none">
+            <div class="reply-preview-content">
+              <span id="reply-preview-label">Respondiendo a:</span>
+              <span id="reply-preview-text"></span>
+            </div>
+
+            <button
+              id="reply-preview-close"
+              type="button"
+              class="reply-preview-close"
+              aria-label="Cancelar respuesta"
+            >
+              ×
+            </button>
+          </div>
+          <input
+            type="text"
+            id="operador-input"
+            placeholder="Escribí una respuesta..."
+            autocomplete="off"
+          />
+
+          <button type="submit">Enviar</button>
+        </form>
+      </section>
+    </main>
+    <div id="image-viewer" class="image-viewer">
+      <button
+        id="image-viewer-close"
+        class="image-viewer-close"
+        type="button"
+        aria-label="Cerrar imagen"
+      >
+        ×
+      </button>
+
+      <img id="image-viewer-img" src="" alt="Imagen ampliada" />
+    </div>
+    <div id="capture-editor" class="capture-editor">
+      <div class="capture-editor-content">
+        <div class="capture-editor-toolbar">
+          <button id="capture-clear" type="button">Limpiar dibujo</button>
+
+          <button id="capture-cancel" type="button">Cancelar</button>
+
+          <button id="capture-send" type="button">Enviar</button>
+        </div>
+
+        <div class="capture-canvas-container">
+          <canvas id="capture-canvas"></canvas>
+        </div>
+      </div>
+    </div>
+    <div id="contact-modal" class="contact-modal">
+      <div class="contact-modal-content">
+        <div class="contact-modal-header">
+          <h3>Editar contacto</h3>
+
+          <button id="contact-modal-close" type="button" aria-label="Cerrar">
+            ×
+          </button>
+        </div>
+
+        <div class="contact-modal-body">
+          <label for="contact-name-input"> Nombre del contacto </label>
+
+          <input
+            id="contact-name-input"
+            type="text"
+            autocomplete="off"
+            placeholder="Ej: Juan Pérez"
+          />
+        </div>
+
+        <div class="contact-modal-actions">
+          <button
+            id="contact-modal-cancel"
+            type="button"
+            class="contact-modal-cancel"
+          >
+            Cancelar
+          </button>
+
+          <button
+            id="contact-modal-save"
+            type="button"
+            class="contact-modal-save"
+          >
+            Guardar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="link-modal" class="link-modal">
+      <div class="link-modal-content">
+        <div class="link-modal-header">
+          <h3>Enviar enlace</h3>
+
+          <button id="link-modal-close" type="button" aria-label="Cerrar">
+            ×
+          </button>
+        </div>
+
+        <div class="link-modal-body">
+          <label for="link-title-input">Título</label>
+          <input
+            id="link-title-input"
+            type="text"
+            placeholder="Ej: Dirección"
+            autocomplete="off"
+          />
+
+          <label for="link-description-input">Descripción</label>
+          <input
+            id="link-description-input"
+            type="text"
+            placeholder="Ej: Av. Colón 1234, Mar del Plata"
+            autocomplete="off"
+          />
+
+          <label for="link-button-text-input">Texto del botón</label>
+          <input
+            id="link-button-text-input"
+            type="text"
+            placeholder="Ej: Ver ubicación"
+            autocomplete="off"
+          />
+
+          <label for="link-url-input">Enlace</label>
+          <input
+            id="link-url-input"
+            type="text"
+            placeholder="Ej: maps.google.com/..."
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="link-modal-actions">
+          <button
+            id="link-modal-cancel"
+            type="button"
+            class="link-modal-cancel"
+          >
+            Cancelar
+          </button>
+
+          <button id="link-modal-send" type="button" class="link-modal-send">
+            Enviar
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="shortcut-modal" class="shortcut-modal">
+      <div class="shortcut-modal-content">
+        <div class="shortcut-modal-header">
+          <h3>Nuevo atajo</h3>
+
+          <button id="shortcut-modal-close" type="button" aria-label="Cerrar">
+            ×
+          </button>
+        </div>
+
+        <div class="shortcut-modal-body">
+          <label for="shortcut-name-input">Nombre</label>
+          <input
+            id="shortcut-name-input"
+            type="text"
+            placeholder="Ej: Dirección"
+            autocomplete="off"
+          />
+
+          <label for="shortcut-key-select">Tecla</label>
+          <select id="shortcut-key-select">
+            <option value="F1">F1</option>
+            <option value="F2">F2</option>
+            <option value="F3">F3</option>
+            <option value="F4">F4</option>
+            <option value="F5">F5</option>
+            <option value="F6">F6</option>
+            <option value="F7">F7</option>
+            <option value="F8">F8</option>
+            <option value="F9">F9</option>
+            <option value="F10">F10</option>
+            <option value="F11">F11</option>
+            <option value="F12">F12</option>
+          </select>
+
+          <label for="shortcut-kind-select">Tipo</label>
+          <select id="shortcut-kind-select">
+            <option value="text">Mensaje de texto</option>
+            <option value="link">Tarjeta de enlace</option>
+          </select>
+
+          <div id="shortcut-text-fields">
+            <label for="shortcut-text-input">Mensaje</label>
+
+            <textarea
+              id="shortcut-text-input"
+              placeholder="Escribí el mensaje..."
+            ></textarea>
+          </div>
+
+          <div id="shortcut-link-fields" style="display: none">
+            <label for="shortcut-link-title">Título</label>
+            <input
+              id="shortcut-link-title"
+              type="text"
+              placeholder="Ej: Dirección"
+            />
+
+            <label for="shortcut-link-description">Descripción</label>
+            <input
+              id="shortcut-link-description"
+              type="text"
+              placeholder="Ej: Av. Colón 1234"
+            />
+
+            <label for="shortcut-link-button-text">Texto del botón</label>
+            <input
+              id="shortcut-link-button-text"
+              type="text"
+              placeholder="Ej: Ver ubicación"
+            />
+
+            <label for="shortcut-link-url">Enlace</label>
+            <input
+              id="shortcut-link-url"
+              type="text"
+              placeholder="Ej: maps.google.com/..."
+            />
+          </div>
+        </div>
+
+        <div class="shortcut-modal-actions">
+          <button id="shortcut-modal-cancel" type="button">Cancelar</button>
+
+          <button id="shortcut-modal-save" type="button">Guardar</button>
+        </div>
+      </div>
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="operador.js"></script>
+  </body>
+</html>

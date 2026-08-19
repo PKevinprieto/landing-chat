@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chat</title>
+
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body class="cliente-body">
+    <main class="cliente-chat">
+      <header class="cliente-header">
+        <button type="button" class="cliente-back-button">‹</button>
+
+        <div class="cliente-avatar">
+          <img src="images/avatar.png" alt="Casino" />
+        </div>
+
+        <div class="cliente-header-info">
+          <h1>Casino 24hs</h1>
+          <p>En línea</p>
+        </div>
+
+        <button type="button" class="cliente-menu-button">⋮</button>
+      </header>
+
+      <section id="messages" class="cliente-messages">
+        <div class="message received">Hola 👋 ¿En qué podemos ayudarte?</div>
+      </section>
+
+      <form id="message-form" class="cliente-form">
+        <input type="file" id="image-input" accept="image/*" hidden />
+
+        <button type="button" id="image-button" class="image-button">📎</button>
+        <input
+          type="text"
+          id="message-input"
+          placeholder="Escribí un mensaje..."
+          autocomplete="off"
+        />
+
+        <button type="submit" class="cliente-send-button" aria-label="Enviar">
+          ➤
+        </button>
+      </form>
+    </main>
+    <div id="image-viewer" class="image-viewer">
+      <button
+        id="image-viewer-close"
+        class="image-viewer-close"
+        type="button"
+        aria-label="Cerrar imagen"
+      >
+        ×
+      </button>
+
+      <img id="image-viewer-img" src="" alt="Imagen ampliada" />
+    </div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="cliente.js"></script>
+  </body>
+</html>

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Acceso operador</title>
+
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+
+  <body class="login-body">
+    <main class="login-card">
+      <h1>Panel de operador</h1>
+
+      <p>Ingresá tu contraseña para continuar</p>
+
+      <form action="/login" method="POST">
+        <input
+          type="password"
+          name="password"
+          placeholder="Contraseña"
+          required
+          autofocus
+        />
+
+        <button type="submit">Ingresar</button>
+      </form>
+
+      <p id="login-error" class="login-error">Contraseña incorrecta</p>
+    </main>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+
+      if (params.get("error") === "1") {
+        document.getElementById("login-error").classList.add("visible");
+      }
+    </script>
+  </body>
+</html>
