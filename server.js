@@ -246,6 +246,7 @@ io.on("connection", (socket) => {
     try {
       const visitorId = data.visitorId;
       const ahora = Date.now();
+      const esVisitanteNuevo = !conversaciones.has(visitorId);
 
       clientesConectados.set(visitorId, socket.id);
 
@@ -281,6 +282,78 @@ io.on("connection", (socket) => {
           lastSeen: ahora,
           name: null,
         });
+      }
+      if (esVisitanteNuevo) {
+        const messageUid = crypto.randomUUID();
+
+        const textoBienvenida =
+          "Holaa, decime tu nombre o apodo y te creamos tu usuario enseguida, PORFAVOR MANTENETE EN ESTA PAGINA PARA QUE NOS PODAMOS SEGUIR COMUNICANDO, Gracias!";
+
+        const mensajeBienvenida = {
+          id: messageUid,
+          type: "operador",
+          kind: "text",
+          text: textoBienvenida,
+          replyToUid: null,
+          createdAt: ahora,
+        };
+
+        const conversacion = conversaciones.get(visitorId);
+
+        conversacion.mensajes.push(mensajeBienvenida);
+        conversacion.updatedAt = ahora;
+
+        try {
+          await db.query(
+            `
+      INSERT INTO messages (
+        visitor_id,
+        sender,
+        text,
+        created_at,
+        kind,
+        message_uid,
+        reply_to_uid
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `,
+            [
+              visitorId,
+              "operador",
+              textoBienvenida,
+              ahora,
+              "text",
+              messageUid,
+              null,
+            ],
+          );
+
+          await db.query(
+            `
+      UPDATE conversations
+      SET updated_at = $1
+      WHERE visitor_id = $2
+      `,
+            [ahora, visitorId],
+          );
+
+          socket.emit("cliente:mensaje-operador", {
+            id: messageUid,
+            type: "operador",
+            kind: "text",
+            text: textoBienvenida,
+            replyToUid: null,
+            createdAt: ahora,
+            auto: true,
+          });
+
+          io.emit("operador:conversaciones", obtenerConversacionesOrdenadas());
+        } catch (error) {
+          console.error(
+            "Error guardando mensaje de bienvenida:",
+            error.message,
+          );
+        }
       }
 
       const resultadoMensajes = await db.query(

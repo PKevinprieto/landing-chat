@@ -153,6 +153,9 @@ socket.on("cliente:mensaje-operador", (data) => {
     replyToUid: data.replyToUid || null,
     createdAt: data.createdAt,
   });
+  if (data.auto) {
+    reproducirSonidoNotificacion();
+  }
 });
 socket.on("cliente:imagen-operador", (data) => {
   console.log("Imagen recibida del operador:", data);
@@ -374,4 +377,33 @@ function renderTextWithLinks(container, text) {
       container.appendChild(document.createTextNode(puntuacion));
     }
   });
+}
+function reproducirSonidoNotificacion() {
+  try {
+    const audioContext = new (
+      window.AudioContext || window.webkitAudioContext
+    )();
+
+    const oscillator = audioContext.createOscillator();
+
+    const gain = audioContext.createGain();
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.frequency.value = 880;
+
+    gain.gain.setValueAtTime(0.15, audioContext.currentTime);
+
+    gain.gain.exponentialRampToValueAtTime(
+      0.001,
+      audioContext.currentTime + 0.3,
+    );
+
+    oscillator.start();
+
+    oscillator.stop(audioContext.currentTime + 0.3);
+  } catch (error) {
+    console.log("El navegador bloqueó el sonido automático");
+  }
 }
