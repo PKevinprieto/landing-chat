@@ -329,6 +329,7 @@
           <select id="shortcut-kind-select">
             <option value="text">Mensaje de texto</option>
             <option value="link">Tarjeta de enlace</option>
+            <option value="copy">Copiar texto</option>
           </select>
 
           <div id="shortcut-text-fields">
@@ -367,6 +368,36 @@
               id="shortcut-link-url"
               type="text"
               placeholder="Ej: maps.google.com/..."
+            />
+          </div>
+
+          <div id="shortcut-copy-fields" style="display: none">
+            <label for="shortcut-copy-title">Título</label>
+            <input
+              id="shortcut-copy-title"
+              type="text"
+              placeholder="Ej: Datos para pagar"
+            />
+
+            <label for="shortcut-copy-description">Descripción</label>
+            <input
+              id="shortcut-copy-description"
+              type="text"
+              placeholder="Ej: Banco Provincia"
+            />
+
+            <label for="shortcut-copy-button-text">Texto del botón</label>
+            <input
+              id="shortcut-copy-button-text"
+              type="text"
+              placeholder="Ej: Copiar CBU"
+            />
+
+            <label for="shortcut-copy-text">Texto a copiar</label>
+            <input
+              id="shortcut-copy-text"
+              type="text"
+              placeholder="Ej: 0140000000000000000000"
             />
           </div>
         </div>

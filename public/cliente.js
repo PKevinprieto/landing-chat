@@ -292,6 +292,20 @@ socket.on("cliente:historial", (historial) => {
 
       return;
     }
+    if (mensaje.kind === "copy") {
+      console.log("COPY DESDE HISTORIAL:", mensaje);
+      addCopyCard(
+        {
+          title: mensaje.copyTitle,
+          description: mensaje.copyDescription,
+          buttonText: mensaje.copyButtonText,
+          copyText: mensaje.copyText,
+        },
+        type,
+      );
+
+      return;
+    }
 
     addMessage(mensaje.text, type, mensaje);
   });
@@ -324,6 +338,31 @@ socket.on("cliente:imagen-operador", (data) => {
   console.log("Imagen recibida del operador:", data);
 
   addImage(data.imageUrl, "received");
+});
+socket.on("cliente:copy-operador", (data) => {
+  console.log("Tarjeta copy recibida:", data);
+
+  historialActual.push({
+    id: data.id,
+    sender: "operador",
+    kind: "copy",
+    text: "[copiar]",
+    copyTitle: data.title,
+    copyDescription: data.description,
+    copyButtonText: data.buttonText,
+    copyText: data.copyText,
+    createdAt: data.createdAt,
+  });
+
+  addCopyCard(
+    {
+      title: data.title,
+      description: data.description,
+      buttonText: data.buttonText,
+      copyText: data.copyText,
+    },
+    "received",
+  );
 });
 socket.on("cliente:link-operador", (data) => {
   console.log("Enlace recibido del operador:", data);
@@ -468,6 +507,66 @@ function addLinkCard(linkData, type) {
 
   messages.scrollTop = messages.scrollHeight;
 }
+
+function addCopyCard(copyData, type) {
+  const message = document.createElement("div");
+
+  message.classList.add("message", type, "copy-message");
+
+  const card = document.createElement("div");
+  card.classList.add("copy-card");
+
+  const title = document.createElement("div");
+  title.classList.add("copy-card-title");
+  title.textContent = copyData.title;
+
+  card.appendChild(title);
+
+  if (copyData.description) {
+    const description = document.createElement("div");
+
+    description.classList.add("copy-card-description");
+    description.textContent = copyData.description;
+
+    card.appendChild(description);
+  }
+
+  const copyValue = document.createElement("div");
+  copyValue.classList.add("copy-card-value");
+  copyValue.textContent = copyData.copyText;
+
+  card.appendChild(copyValue);
+
+  const button = document.createElement("button");
+
+  button.type = "button";
+  button.classList.add("copy-card-button");
+  button.textContent = copyData.buttonText;
+
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(copyData.copyText);
+
+      const textoOriginal = button.textContent;
+
+      button.textContent = "✓ Copiado";
+
+      setTimeout(() => {
+        button.textContent = textoOriginal;
+      }, 1500);
+    } catch (error) {
+      console.error("Error copiando texto:", error);
+    }
+  });
+
+  card.appendChild(button);
+
+  message.appendChild(card);
+  messages.appendChild(message);
+
+  messages.scrollTop = messages.scrollHeight;
+}
+
 const imageViewer = document.getElementById("image-viewer");
 const imageViewerImg = document.getElementById("image-viewer-img");
 const imageViewerClose = document.getElementById("image-viewer-close");

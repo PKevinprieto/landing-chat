@@ -129,7 +129,11 @@ async function cargarConversacionesDesdeDB() {
           link_title,
           link_description,
           link_button_text,
-          link_url
+          link_url,
+          copy_title,
+          copy_description,
+          copy_button_text,
+          copy_text
         FROM messages
         WHERE visitor_id = $1
         ORDER BY created_at ASC, id ASC
@@ -148,6 +152,10 @@ async function cargarConversacionesDesdeDB() {
         linkDescription: mensaje.link_description,
         linkButtonText: mensaje.link_button_text,
         linkUrl: mensaje.link_url,
+        copyTitle: mensaje.copy_title,
+        copyDescription: mensaje.copy_description,
+        copyButtonText: mensaje.copy_button_text,
+        copyText: mensaje.copy_text,
         createdAt: Number(mensaje.created_at),
       }));
 
@@ -240,6 +248,10 @@ async function obtenerAtajos() {
         link_description,
         link_button_text,
         link_url,
+        copy_title,
+        copy_description,
+        copy_button_text,
+        copy_text,
         created_at,
         updated_at
       FROM shortcuts
@@ -256,6 +268,10 @@ async function obtenerAtajos() {
       linkDescription: fila.link_description,
       linkButtonText: fila.link_button_text,
       linkUrl: fila.link_url,
+      copyTitle: fila.copy_title,
+      copyDescription: fila.copy_description,
+      copyButtonText: fila.copy_button_text,
+      copyText: fila.copy_text,
       createdAt: Number(fila.created_at),
       updatedAt: Number(fila.updated_at),
     }));
@@ -533,7 +549,11 @@ io.on("connection", (socket) => {
           link_title,
           link_description,
           link_button_text,
-          link_url
+          link_url,
+          copy_title,
+          copy_description,
+          copy_button_text,
+          copy_text
         FROM messages
         WHERE visitor_id = $1
         ORDER BY created_at ASC, id ASC
@@ -552,6 +572,10 @@ io.on("connection", (socket) => {
         linkDescription: mensaje.link_description,
         linkButtonText: mensaje.link_button_text,
         linkUrl: mensaje.link_url,
+        copyTitle: mensaje.copy_title,
+        copyDescription: mensaje.copy_description,
+        copyButtonText: mensaje.copy_button_text,
+        copyText: mensaje.copy_text,
         createdAt: Number(mensaje.created_at),
       }));
 
@@ -828,6 +852,94 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("operador:copy", async (data) => {
+    try {
+      const conversacion = conversaciones.get(data.visitorId);
+
+      if (!conversacion) {
+        return;
+      }
+
+      const ahora = Date.now();
+      const messageUid = crypto.randomUUID();
+
+      const mensajeCopy = {
+        id: messageUid,
+        type: "operador",
+        kind: "copy",
+        text: "[copiar]",
+        copyTitle: data.title,
+        copyDescription: data.description || "",
+        copyButtonText: data.buttonText,
+        copyText: data.copyText,
+        createdAt: ahora,
+      };
+
+      conversacion.mensajes.push(mensajeCopy);
+      conversacion.updatedAt = ahora;
+      console.log("COPY RECIBIDO EN SERVER:", data);
+      await db.query(
+        `
+      INSERT INTO messages (
+        visitor_id,
+        sender,
+        text,
+        created_at,
+        kind,
+        message_uid,
+        copy_title,
+        copy_description,
+        copy_button_text,
+        copy_text
+      )
+      VALUES (
+        $1, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10
+      )
+      `,
+        [
+          data.visitorId,
+          "operador",
+          "[copiar]",
+          ahora,
+          "copy",
+          messageUid,
+          data.title,
+          data.description || "",
+          data.buttonText,
+          data.copyText,
+        ],
+      );
+
+      await db.query(
+        `
+      UPDATE conversations
+      SET updated_at = $1
+      WHERE visitor_id = $2
+      `,
+        [ahora, data.visitorId],
+      );
+
+      const socketIdCliente = clientesConectados.get(data.visitorId);
+
+      if (socketIdCliente) {
+        io.to(socketIdCliente).emit("cliente:copy-operador", {
+          id: messageUid,
+          kind: "copy",
+          title: data.title,
+          description: data.description || "",
+          buttonText: data.buttonText,
+          copyText: data.copyText,
+          createdAt: ahora,
+        });
+      }
+
+      await actualizarConversacionesOperador();
+    } catch (error) {
+      console.error("Error guardando tarjeta copy:", error.message);
+    }
+  });
+
   socket.on("operador:imagen", async (data) => {
     try {
       console.log("Imagen recibida del operador");
@@ -1042,36 +1154,63 @@ io.on("connection", (socket) => {
       return;
     }
 
-    if (kind !== "text" && kind !== "link") {
+    if (kind !== "text" && kind !== "link" && kind !== "copy") {
       return;
     }
 
     try {
       await db.query(
         `
-        INSERT INTO shortcuts (
-          name,
-          shortcut_key,
-          kind,
-          text,
-          link_title,
-          link_description,
-          link_button_text,
-          link_url,
-          created_at,
-          updated_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        `,
+  INSERT INTO shortcuts (
+    name,
+    shortcut_key,
+    kind,
+
+    text,
+
+    link_title,
+    link_description,
+    link_button_text,
+    link_url,
+
+    copy_title,
+    copy_description,
+    copy_button_text,
+    copy_text,
+
+    created_at,
+    updated_at
+  )
+  VALUES (
+    $1, $2, $3, $4,
+    $5, $6, $7, $8,
+    $9, $10, $11, $12,
+    $13, $14
+  )
+  `,
         [
           name,
           shortcutKey,
           kind,
+
           kind === "text" ? String(data.text || "").trim() : null,
+
           kind === "link" ? String(data.linkTitle || "").trim() : null,
+
           kind === "link" ? String(data.linkDescription || "").trim() : null,
+
           kind === "link" ? String(data.linkButtonText || "").trim() : null,
+
           kind === "link" ? String(data.linkUrl || "").trim() : null,
+
+          kind === "copy" ? String(data.copyTitle || "").trim() : null,
+
+          kind === "copy" ? String(data.copyDescription || "").trim() : null,
+
+          kind === "copy" ? String(data.copyButtonText || "").trim() : null,
+
+          kind === "copy" ? String(data.copyText || "").trim() : null,
+
           ahora,
           ahora,
         ],
@@ -1124,28 +1263,50 @@ io.on("connection", (socket) => {
     try {
       await db.query(
         `
-        UPDATE shortcuts
-        SET
-          name = $1,
-          shortcut_key = $2,
-          kind = $3,
-          text = $4,
-          link_title = $5,
-          link_description = $6,
-          link_button_text = $7,
-          link_url = $8,
-          updated_at = $9
-        WHERE id = $10
-        `,
+  UPDATE shortcuts
+  SET
+    name = $1,
+    shortcut_key = $2,
+    kind = $3,
+
+    text = $4,
+
+    link_title = $5,
+    link_description = $6,
+    link_button_text = $7,
+    link_url = $8,
+
+    copy_title = $9,
+    copy_description = $10,
+    copy_button_text = $11,
+    copy_text = $12,
+
+    updated_at = $13
+  WHERE id = $14
+  `,
         [
           name,
           shortcutKey,
           kind,
+
           kind === "text" ? String(data.text || "").trim() : null,
+
           kind === "link" ? String(data.linkTitle || "").trim() : null,
+
           kind === "link" ? String(data.linkDescription || "").trim() : null,
+
           kind === "link" ? String(data.linkButtonText || "").trim() : null,
+
           kind === "link" ? String(data.linkUrl || "").trim() : null,
+
+          kind === "copy" ? String(data.copyTitle || "").trim() : null,
+
+          kind === "copy" ? String(data.copyDescription || "").trim() : null,
+
+          kind === "copy" ? String(data.copyButtonText || "").trim() : null,
+
+          kind === "copy" ? String(data.copyText || "").trim() : null,
+
           ahora,
           data.id,
         ],

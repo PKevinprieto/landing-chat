@@ -1505,7 +1505,8 @@ body {
   border-color: #25d366;
 }
 
-#shortcut-link-fields {
+#shortcut-link-fields,
+#shortcut-copy-fields {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2276,4 +2277,59 @@ body {
   display: inline-block;
   font-size: 20px !important;
   line-height: 1;
+}
+.copy-card {
+  min-width: 230px;
+  max-width: 320px;
+
+  padding: 16px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  text-align: center;
+}
+
+.copy-card-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.copy-card-description {
+  font-size: 15px;
+  /* opacity: 0.8; */
+}
+
+.copy-card-value {
+  padding: 8px 10px;
+
+  background: rgba(255, 255, 255, 0.08);
+
+  border-radius: 8px;
+
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.copy-card-button {
+  width: 100%;
+
+  margin-top: 5px;
+
+  padding: 10px 14px;
+
+  border: none;
+  border-radius: 8px;
+
+  background: #25d366;
+  color: #ffffff;
+
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.copy-card-button:hover {
+  background: #20bd5a;
 }

@@ -116,8 +116,19 @@ socket.on("operador:atajos", (atajos) => {
 
     item.classList.add("shortcut-item");
 
-    const tipo =
-      atajo.kind === "text" ? "Mensaje de texto" : "Tarjeta de enlace";
+    let tipo = "";
+
+    if (atajo.kind === "text") {
+      tipo = "Mensaje de texto";
+    }
+
+    if (atajo.kind === "link") {
+      tipo = "Tarjeta de enlace";
+    }
+
+    if (atajo.kind === "copy") {
+      tipo = "Copiar texto";
+    }
 
     item.innerHTML = `
   <div class="shortcut-item-top">
@@ -128,7 +139,7 @@ socket.on("operador:atajos", (atajos) => {
       </div>
 
       <div class="shortcut-type">
-        ${atajo.kind === "text" ? "Mensaje de texto" : "Tarjeta de enlace"}
+        ${tipo}
       </div>
     </div>
 
@@ -213,6 +224,19 @@ const shortcutLinkButtonText = document.getElementById(
 );
 
 const shortcutLinkUrl = document.getElementById("shortcut-link-url");
+const shortcutCopyFields = document.getElementById("shortcut-copy-fields");
+
+const shortcutCopyTitle = document.getElementById("shortcut-copy-title");
+
+const shortcutCopyDescription = document.getElementById(
+  "shortcut-copy-description",
+);
+
+const shortcutCopyButtonText = document.getElementById(
+  "shortcut-copy-button-text",
+);
+
+const shortcutCopyText = document.getElementById("shortcut-copy-text");
 function abrirModalAtajo() {
   atajoEditandoId = null;
   const modalTitle = document.querySelector(".shortcut-modal-header h3");
@@ -228,9 +252,14 @@ function abrirModalAtajo() {
   shortcutLinkDescription.value = "";
   shortcutLinkButtonText.value = "";
   shortcutLinkUrl.value = "";
+  shortcutCopyTitle.value = "";
+  shortcutCopyDescription.value = "";
+  shortcutCopyButtonText.value = "";
+  shortcutCopyText.value = "";
 
   shortcutTextFields.style.display = "block";
   shortcutLinkFields.style.display = "none";
+  shortcutCopyFields.style.display = "none";
 
   shortcutModal.classList.add("active");
 
@@ -256,12 +285,22 @@ shortcutModal.addEventListener("click", (event) => {
 shortcutKindSelect.addEventListener("change", () => {
   const kind = shortcutKindSelect.value;
 
+  shortcutTextFields.style.display = "none";
+  shortcutLinkFields.style.display = "none";
+  shortcutCopyFields.style.display = "none";
+
   if (kind === "text") {
     shortcutTextFields.style.display = "block";
-    shortcutLinkFields.style.display = "none";
-  } else {
-    shortcutTextFields.style.display = "none";
+    return;
+  }
+
+  if (kind === "link") {
     shortcutLinkFields.style.display = "flex";
+    return;
+  }
+
+  if (kind === "copy") {
+    shortcutCopyFields.style.display = "flex";
   }
 });
 shortcutModalSave.addEventListener("click", () => {
@@ -322,6 +361,28 @@ shortcutModalSave.addEventListener("click", () => {
       linkDescription,
       linkButtonText,
       linkUrl,
+    });
+  }
+  if (kind === "copy") {
+    const copyTitle = shortcutCopyTitle.value.trim();
+    const copyDescription = shortcutCopyDescription.value.trim();
+    const copyButtonText = shortcutCopyButtonText.value.trim();
+    const copyText = shortcutCopyText.value.trim();
+
+    if (!copyTitle || !copyButtonText || !copyText) {
+      return;
+    }
+
+    socket.emit(evento, {
+      id: atajoEditandoId,
+      name,
+      key,
+      kind,
+
+      copyTitle,
+      copyDescription,
+      copyButtonText,
+      copyText,
     });
   }
   atajoEditandoId = null;
@@ -438,6 +499,67 @@ function addLinkCard(linkData, type) {
 
   messages.scrollTop = messages.scrollHeight;
 }
+
+function addCopyCard(copyData, type) {
+  const message = document.createElement("div");
+
+  message.classList.add("message", type, "copy-message");
+
+  const card = document.createElement("div");
+  card.classList.add("copy-card");
+
+  const title = document.createElement("div");
+  title.classList.add("copy-card-title");
+  title.textContent = copyData.title;
+
+  card.appendChild(title);
+
+  if (copyData.description) {
+    const description = document.createElement("div");
+
+    description.classList.add("copy-card-description");
+    description.textContent = copyData.description;
+
+    card.appendChild(description);
+  }
+
+  const copyValue = document.createElement("div");
+  copyValue.classList.add("copy-card-value");
+  copyValue.textContent = copyData.copyText;
+
+  card.appendChild(copyValue);
+
+  const button = document.createElement("button");
+
+  button.type = "button";
+  button.classList.add("copy-card-button");
+  button.textContent = copyData.buttonText;
+
+  button.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(copyData.copyText);
+
+      const textoOriginal = button.textContent;
+
+      button.textContent = "✓ Copiado";
+
+      setTimeout(() => {
+        button.textContent = textoOriginal;
+      }, 1500);
+    } catch (error) {
+      console.error("Error copiando texto:", error);
+    }
+  });
+
+  card.appendChild(button);
+
+  message.appendChild(card);
+
+  messages.appendChild(message);
+
+  messages.scrollTop = messages.scrollHeight;
+}
+
 operadorLinkButton.addEventListener("click", abrirModalEnlace);
 
 linkModalClose.addEventListener("click", cerrarModalEnlace);
@@ -712,7 +834,9 @@ socket.on("operador:conversaciones", (conversaciones) => {
         ? "📷 Imagen"
         : ultimoMensaje.kind === "link"
           ? `🔗 ${ultimoMensaje.linkTitle || "Enlace"}`
-          : ultimoMensaje.text
+          : ultimoMensaje.kind === "copy"
+            ? `📋 ${ultimoMensaje.copyTitle || "Copiar texto"}`
+            : ultimoMensaje.text
       : "Sin mensajes todavía"
   }
 </div>
@@ -931,6 +1055,19 @@ function mostrarConversacion(conversacion) {
           description: mensaje.linkDescription,
           buttonText: mensaje.linkButtonText,
           url: mensaje.linkUrl,
+        },
+        type,
+      );
+
+      return;
+    }
+    if (mensaje.kind === "copy") {
+      addCopyCard(
+        {
+          title: mensaje.copyTitle,
+          description: mensaje.copyDescription,
+          buttonText: mensaje.copyButtonText,
+          copyText: mensaje.copyText,
         },
         type,
       );
@@ -1438,6 +1575,36 @@ function ejecutarAtajo(atajo) {
       visitorId: visitanteSeleccionado,
       ...linkData,
     });
+
+    return;
+  }
+
+  // =========================
+  // ATAJO DE COPIAR TEXTO
+  // =========================
+
+  if (atajo.kind === "copy") {
+    if (!atajo.copyText) {
+      return;
+    }
+
+    const copyData = {
+      title: atajo.copyTitle,
+      description: atajo.copyDescription,
+      buttonText: atajo.copyButtonText,
+      copyText: atajo.copyText,
+    };
+
+    console.log("ENVIANDO COPY:", copyData);
+
+    addCopyCard(copyData, "sent");
+
+    socket.emit("operador:copy", {
+      visitorId: visitanteSeleccionado,
+      ...copyData,
+    });
+
+    return;
   }
 }
 function abrirModalEditarAtajo(atajo) {
@@ -1474,6 +1641,26 @@ function abrirModalEditarAtajo(atajo) {
     shortcutLinkUrl.value = atajo.linkUrl || "";
   }
 
+  if (atajo.kind === "copy") {
+    shortcutTextFields.style.display = "none";
+    shortcutLinkFields.style.display = "none";
+    shortcutCopyFields.style.display = "flex";
+
+    shortcutTextInput.value = "";
+
+    shortcutLinkTitle.value = "";
+    shortcutLinkDescription.value = "";
+    shortcutLinkButtonText.value = "";
+    shortcutLinkUrl.value = "";
+
+    shortcutCopyTitle.value = atajo.copyTitle || "";
+
+    shortcutCopyDescription.value = atajo.copyDescription || "";
+
+    shortcutCopyButtonText.value = atajo.copyButtonText || "";
+
+    shortcutCopyText.value = atajo.copyText || "";
+  }
   const modalTitle = document.querySelector(".shortcut-modal-header h3");
 
   modalTitle.textContent = "Editar atajo";
