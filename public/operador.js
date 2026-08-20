@@ -687,17 +687,21 @@ socket.on("operador:conversaciones", (conversaciones) => {
       : "";
 
     const noLeidos = mensajesNoLeidos.get(conversacion.visitorId) || 0;
+    const estadoNotificaciones = conversacion.pushEnabled
+      ? `<span class="push-icon push-on" >🔔</span>`
+      : `<span class="push-icon push-off">🔕</span>`;
 
     item.innerHTML = `
   <div class="conversation-top">
     <strong>${nombreContacto}</strong>
+     ${estadoNotificaciones}
     <span>${hora}</span>
   </div>
 
-  <div class="conversation-status">
-    ${estadoConexion}
-  </div>
-
+ <div class="conversation-status">
+  ${estadoConexion}
+ 
+</div>
   <div class="conversation-bottom">
 
     <div class="conversation-preview">

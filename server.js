@@ -54,6 +54,7 @@ const PORT = process.env.PORT || 3000;
 
 const clientesConectados = new Map();
 const conversaciones = new Map();
+const clientesViendoChat = new Map();
 
 function obtenerConversacionesOrdenadas() {
   return Array.from(conversaciones.values())
@@ -62,6 +63,37 @@ function obtenerConversacionesOrdenadas() {
       online: clientesConectados.has(conversacion.visitorId),
     }))
     .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+}
+
+async function obtenerConversacionesConPush() {
+  const lista = obtenerConversacionesOrdenadas();
+
+  const resultado = await db.query(`
+    SELECT DISTINCT visitor_id
+    FROM push_subscriptions
+  `);
+
+  const visitantesConPush = new Set(
+    resultado.rows.map((fila) => fila.visitor_id),
+  );
+
+  return lista.map((conversacion) => ({
+    ...conversacion,
+    pushEnabled: visitantesConPush.has(conversacion.visitorId),
+  }));
+}
+
+async function actualizarConversacionesOperador() {
+  try {
+    const conversacionesConPush = await obtenerConversacionesConPush();
+
+    io.emit("operador:conversaciones", conversacionesConPush);
+  } catch (error) {
+    console.error(
+      "Error actualizando conversaciones del operador:",
+      error.message,
+    );
+  }
 }
 
 async function cargarConversacionesDesdeDB() {
@@ -356,13 +388,18 @@ async function enviarPushAVisitante(visitorId, texto) {
 }
 
 io.on("connection", (socket) => {
-  console.log("Usuario conectado:", socket.id);
+  console.log("Socket conectado:", socket.id);
 
-  socket.emit("operador:conversaciones", obtenerConversacionesOrdenadas());
-
-  socket.on("operador:solicitar-conversaciones", () => {
-    socket.emit("operador:conversaciones", obtenerConversacionesOrdenadas());
-  });
+  obtenerConversacionesConPush()
+    .then((conversacionesConPush) => {
+      socket.emit("operador:conversaciones", conversacionesConPush);
+    })
+    .catch((error) => {
+      console.error(
+        "Error enviando conversaciones al conectar:",
+        error.message,
+      );
+    });
 
   socket.on("operador:solicitar-atajos", async () => {
     const atajos = await obtenerAtajos();
@@ -474,7 +511,7 @@ io.on("connection", (socket) => {
             auto: true,
           });
 
-          io.emit("operador:conversaciones", obtenerConversacionesOrdenadas());
+          await actualizarConversacionesOperador();
         } catch (error) {
           console.error(
             "Error guardando mensaje de bienvenida:",
@@ -533,7 +570,11 @@ io.on("connection", (socket) => {
       console.error("Error registrando cliente:", error.message);
     }
   });
+  socket.on("cliente:visibilidad", (data) => {
+    clientesViendoChat.set(data.visitorId, data.visible === true);
 
+    console.log("Visibilidad cliente:", data.visitorId, data.visible);
+  });
   socket.on("cliente:mensaje", async (data) => {
     try {
       console.log("Mensaje recibido del cliente");
@@ -638,7 +679,7 @@ io.on("connection", (socket) => {
         createdAt: ahora,
       });
 
-      io.emit("operador:conversaciones", obtenerConversacionesOrdenadas());
+      await actualizarConversacionesOperador();
     } catch (error) {
       console.error("Error guardando mensaje del cliente:", error.message);
     }
@@ -696,7 +737,7 @@ io.on("connection", (socket) => {
         imageUrl: data.imageUrl,
       });
 
-      io.emit("operador:conversaciones", obtenerConversacionesOrdenadas());
+      await actualizarConversacionesOperador();
     } catch (error) {
       console.error("Error guardando imagen del cliente:", error.message);
     }
@@ -781,7 +822,7 @@ io.on("connection", (socket) => {
         });
       }
 
-      io.emit("operador:conversaciones", obtenerConversacionesOrdenadas());
+      await actualizarConversacionesOperador();
     } catch (error) {
       console.error("Error guardando enlace:", error.message);
     }
@@ -842,7 +883,7 @@ io.on("connection", (socket) => {
         });
       }
 
-      io.emit("operador:conversaciones", obtenerConversacionesOrdenadas());
+      await actualizarConversacionesOperador();
     } catch (error) {
       console.error("Error guardando imagen del operador:", error.message);
     }
@@ -926,7 +967,12 @@ io.on("connection", (socket) => {
         `,
         [ahora, data.visitorId],
       );
-      await enviarPushAVisitante(data.visitorId, data.text);
+      const clienteEstaViendoChat =
+        clientesViendoChat.get(data.visitorId) === true;
+
+      if (!clienteEstaViendoChat) {
+        await enviarPushAVisitante(data.visitorId, data.text);
+      }
       const socketIdCliente = clientesConectados.get(data.visitorId);
 
       if (socketIdCliente) {
@@ -950,7 +996,7 @@ io.on("connection", (socket) => {
         createdAt: ahora,
       });
 
-      io.emit("operador:conversaciones", obtenerConversacionesOrdenadas());
+      await actualizarConversacionesOperador();
     } catch (error) {
       console.error("Error guardando mensaje del operador:", error.message);
     }
@@ -977,7 +1023,7 @@ io.on("connection", (socket) => {
         [name, visitorId],
       );
 
-      io.emit("operador:conversaciones", obtenerConversacionesOrdenadas());
+      await actualizarConversacionesOperador();
     } catch (error) {
       console.error("Error guardando nombre del contacto:", error.message);
     }
@@ -1151,7 +1197,7 @@ io.on("connection", (socket) => {
 
       console.log("Cliente desconectado:", visitorId);
 
-      io.emit("operador:conversaciones", obtenerConversacionesOrdenadas());
+      await actualizarConversacionesOperador();
 
       break;
     }

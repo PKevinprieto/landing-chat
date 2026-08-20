@@ -10,10 +10,6 @@ const db = new Pool({
   },
 });
 
-db.on("connect", () => {
-  console.log("Base de datos PostgreSQL conectada");
-});
-
 db.on("error", (error) => {
   console.error("Error inesperado en PostgreSQL:", error);
 });

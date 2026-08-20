@@ -22,7 +22,13 @@ self.addEventListener("push", (event) => {
     body: data.body,
 
     icon: "/images/avatar.png",
-    // badge: "/images/avatar.png",
+
+    badge: "/images/avatar.png",
+
+    vibrate: [200, 100, 200],
+
+    requireInteraction: true,
+
     data: {
       url: data.url || "/cliente.html",
     },

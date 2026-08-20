@@ -8,6 +8,45 @@ const messages = document.getElementById("messages");
 const pushPermissionBox = document.getElementById("push-permission-box");
 
 const enablePushButton = document.getElementById("enable-push-button");
+async function revisarEstadoNotificaciones() {
+  if (!("Notification" in window)) {
+    pushPermissionBox.style.display = "none";
+    return;
+  }
+
+  if (!("serviceWorker" in navigator)) {
+    pushPermissionBox.style.display = "none";
+    return;
+  }
+
+  if (Notification.permission !== "granted") {
+    pushPermissionBox.style.display = "flex";
+    return;
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready;
+
+    const subscription = await registration.pushManager.getSubscription();
+
+    if (subscription) {
+      // Ya tiene permiso + suscripción activa
+      pushPermissionBox.style.display = "none";
+
+      console.log("🔔 Notificaciones ya estaban activadas");
+
+      return;
+    }
+
+    // Tiene permiso, pero perdió la suscripción.
+    // Mostramos el cartel para poder crearla otra vez.
+    pushPermissionBox.style.display = "flex";
+  } catch (error) {
+    console.error("Error comprobando notificaciones:", error);
+
+    pushPermissionBox.style.display = "flex";
+  }
+}
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
 
@@ -125,6 +164,9 @@ if ("serviceWorker" in navigator) {
         await navigator.serviceWorker.register("/service-worker.js");
 
       console.log("✅ Service Worker registrado:", registration.scope);
+
+      // Revisar si ya tiene notificaciones activadas
+      await revisarEstadoNotificaciones();
     } catch (error) {
       console.error("❌ Error registrando Service Worker:", error);
     }
@@ -133,8 +175,6 @@ if ("serviceWorker" in navigator) {
 let historialActual = [];
 let audioHabilitado = false;
 let audioContext = null;
-
-let segundoMensajeMostrado = false;
 
 function habilitarAudio() {
   if (audioHabilitado) {
@@ -182,7 +222,20 @@ socket.on("connect", () => {
   socket.emit("cliente:registrar", {
     visitorId: visitorId,
   });
+  informarVisibilidadChat();
 });
+function informarVisibilidadChat() {
+  socket.emit("cliente:visibilidad", {
+    visitorId: visitorId,
+    visible: document.visibilityState === "visible",
+  });
+}
+
+document.addEventListener("visibilitychange", informarVisibilidadChat);
+
+window.addEventListener("focus", informarVisibilidadChat);
+
+window.addEventListener("blur", informarVisibilidadChat);
 
 // =========================
 // ENVIAR MENSAJE
@@ -513,23 +566,6 @@ input.addEventListener(
   "focus",
   () => {
     habilitarAudio();
-
-    if (segundoMensajeMostrado) {
-      return;
-    }
-
-    segundoMensajeMostrado = true;
-
-    setTimeout(() => {
-      const texto = "Dalee mucho gusto! Ya te lo paso!";
-
-      addMessage(texto, "received", {
-        sender: "operador",
-        kind: "text",
-      });
-
-      reproducirSonidoNotificacion();
-    }, 500);
   },
   { once: true },
 );

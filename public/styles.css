@@ -2257,3 +2257,23 @@ body {
 .push-permission-box button:active {
   transform: scale(0.98);
 }
+.push-status {
+  display: block;
+  margin-top: 3px;
+
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.push-enabled {
+  color: #25d366;
+}
+
+.push-disabled {
+  color: #8d939a;
+}
+.push-icon {
+  display: inline-block;
+  font-size: 20px !important;
+  line-height: 1;
+}
