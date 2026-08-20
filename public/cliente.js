@@ -5,6 +5,77 @@ const socket = io();
 const form = document.getElementById("message-form");
 const input = document.getElementById("message-input");
 const messages = document.getElementById("messages");
+const pushPermissionBox = document.getElementById("push-permission-box");
+
+const enablePushButton = document.getElementById("enable-push-button");
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+  const rawData = window.atob(base64);
+
+  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+}
+enablePushButton.addEventListener("click", async () => {
+  console.log("🔔 SE TOCÓ EL BOTÓN ACTIVAR");
+  try {
+    const permission = await Notification.requestPermission();
+
+    if (permission !== "granted") {
+      console.log("El usuario no permitió notificaciones");
+
+      return;
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+
+    const response = await fetch("/api/push/public-key");
+
+    const data = await response.json();
+
+    const publicKey = data.publicKey;
+
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+    }
+
+    console.log("✅ PushSubscription creada:", subscription);
+    const subscriptionData = subscription.toJSON();
+
+    const saveResponse = await fetch("/api/push/subscribe", {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify({
+        visitorId: visitorId,
+        subscription: subscriptionData,
+      }),
+    });
+
+    const saveResult = await saveResponse.json();
+
+    if (!saveResponse.ok) {
+      throw new Error(
+        saveResult.message || "No se pudo guardar la suscripción",
+      );
+    }
+
+    console.log("✅ Suscripción guardada en servidor");
+    pushPermissionBox.style.display = "none";
+  } catch (error) {
+    console.error("❌ Error activando notificaciones:", error);
+  }
+});
 const imageInput = document.getElementById("image-input");
 const imageButton = document.getElementById("image-button");
 imageButton.addEventListener("click", () => {
@@ -47,7 +118,18 @@ imageInput.addEventListener("change", async () => {
     console.error("Error subiendo imagen:", error);
   }
 });
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", async () => {
+    try {
+      const registration =
+        await navigator.serviceWorker.register("/service-worker.js");
 
+      console.log("✅ Service Worker registrado:", registration.scope);
+    } catch (error) {
+      console.error("❌ Error registrando Service Worker:", error);
+    }
+  });
+}
 let historialActual = [];
 let audioHabilitado = false;
 let audioContext = null;

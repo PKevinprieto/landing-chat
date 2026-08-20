@@ -4,6 +4,7 @@ const express = require("express");
 const multer = require("multer");
 const crypto = require("crypto");
 const session = require("express-session");
+const webpush = require("web-push");
 const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
@@ -30,9 +31,13 @@ const upload = multer({
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-
+webpush.setVapidDetails(
+  process.env.VAPID_EMAIL,
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY,
+);
 app.use(express.urlencoded({ extended: false }));
-
+app.use(express.json());
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -227,6 +232,128 @@ async function obtenerAtajos() {
     return [];
   }
 }
+app.get("/api/push/public-key", (req, res) => {
+  res.json({
+    publicKey: process.env.VAPID_PUBLIC_KEY,
+  });
+});
+app.post("/api/push/subscribe", async (req, res) => {
+  try {
+    const { visitorId, subscription } = req.body;
+
+    if (
+      !visitorId ||
+      !subscription?.endpoint ||
+      !subscription?.keys?.p256dh ||
+      !subscription?.keys?.auth
+    ) {
+      return res.status(400).json({
+        ok: false,
+        message: "Suscripción inválida",
+      });
+    }
+
+    const ahora = Date.now();
+
+    await db.query(
+      `
+      INSERT INTO push_subscriptions (
+        visitor_id,
+        endpoint,
+        p256dh,
+        auth,
+        created_at,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+
+      ON CONFLICT (endpoint)
+      DO UPDATE SET
+        visitor_id = EXCLUDED.visitor_id,
+        p256dh = EXCLUDED.p256dh,
+        auth = EXCLUDED.auth,
+        updated_at = EXCLUDED.updated_at
+      `,
+      [
+        visitorId,
+        subscription.endpoint,
+        subscription.keys.p256dh,
+        subscription.keys.auth,
+        ahora,
+        ahora,
+      ],
+    );
+
+    console.log("🔔 Push guardado:", visitorId);
+
+    return res.json({
+      ok: true,
+    });
+  } catch (error) {
+    console.error("Error guardando Push:", error);
+
+    return res.status(500).json({
+      ok: false,
+      message: "No se pudo guardar la suscripción",
+    });
+  }
+});
+
+async function enviarPushAVisitante(visitorId, texto) {
+  const resultado = await db.query(
+    `
+    SELECT
+      id,
+      endpoint,
+      p256dh,
+      auth
+    FROM push_subscriptions
+    WHERE visitor_id = $1
+    `,
+    [visitorId],
+  );
+
+  if (resultado.rows.length === 0) {
+    return;
+  }
+
+  const payload = JSON.stringify({
+    title: "Casino 24hs",
+    body: texto,
+    url: "/cliente.html",
+  });
+
+  for (const fila of resultado.rows) {
+    const subscription = {
+      endpoint: fila.endpoint,
+      keys: {
+        p256dh: fila.p256dh,
+        auth: fila.auth,
+      },
+    };
+
+    try {
+      await webpush.sendNotification(subscription, payload);
+
+      console.log("🔔 Push enviado a:", visitorId);
+    } catch (error) {
+      console.error("Error enviando push:", error.statusCode || error.message);
+
+      // La suscripción ya no existe o dejó de ser válida
+      if (error.statusCode === 404 || error.statusCode === 410) {
+        await db.query(
+          `
+          DELETE FROM push_subscriptions
+          WHERE id = $1
+          `,
+          [fila.id],
+        );
+
+        console.log("🗑️ Suscripción Push inválida eliminada");
+      }
+    }
+  }
+}
 
 io.on("connection", (socket) => {
   console.log("Usuario conectado:", socket.id);
@@ -396,6 +523,10 @@ io.on("connection", (socket) => {
 
       console.log("Cliente registrado");
       console.log("Visitor ID:", visitorId);
+      io.emit("operador:cliente-entro", {
+        visitorId,
+        timestamp: Date.now(),
+      });
       console.log("Socket ID:", socket.id);
       console.log("Clientes conectados:", clientesConectados.size);
     } catch (error) {
@@ -795,7 +926,7 @@ io.on("connection", (socket) => {
         `,
         [ahora, data.visitorId],
       );
-
+      await enviarPushAVisitante(data.visitorId, data.text);
       const socketIdCliente = clientesConectados.get(data.visitorId);
 
       if (socketIdCliente) {

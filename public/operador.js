@@ -511,9 +511,35 @@ let visitanteSeleccionado = null;
 let mensajeCitado = null;
 let ultimoMensajeTemporal = null;
 let conversacionActual = null;
-const mensajesNoLeidos = new Map();
-let intervaloNotificacion = null;
 let audioContextOperador = null;
+let audioOperadorHabilitado = false;
+function habilitarAudioOperador() {
+  if (audioOperadorHabilitado) {
+    return;
+  }
+
+  audioContextOperador = new (
+    window.AudioContext || window.webkitAudioContext
+  )();
+
+  if (audioContextOperador.state === "suspended") {
+    audioContextOperador.resume();
+  }
+
+  audioOperadorHabilitado = true;
+
+  console.log("🔊 Audio del operador habilitado");
+}
+document.addEventListener("click", habilitarAudioOperador, {
+  once: true,
+});
+
+document.addEventListener("keydown", habilitarAudioOperador, {
+  once: true,
+});
+const mensajesNoLeidos = new Map();
+const visitantesPendientes = new Set();
+let intervaloNotificacion = null;
 function obtenerAudioContextOperador() {
   if (!audioContextOperador) {
     audioContextOperador = new (
@@ -529,33 +555,37 @@ function obtenerAudioContextOperador() {
 }
 
 function sonarNotificacionOperador() {
-  try {
-    const audioContext = obtenerAudioContextOperador();
-
-    const oscillator = audioContext.createOscillator();
-    const gain = audioContext.createGain();
-
-    oscillator.connect(gain);
-    gain.connect(audioContext.destination);
-
-    oscillator.frequency.value = 850;
-
-    gain.gain.setValueAtTime(0.16, audioContext.currentTime);
-
-    gain.gain.exponentialRampToValueAtTime(
-      0.001,
-      audioContext.currentTime + 0.25,
-    );
-
-    oscillator.start();
-
-    oscillator.stop(audioContext.currentTime + 0.25);
-  } catch (error) {
-    console.log("No se pudo reproducir la notificación:", error);
+  if (!audioOperadorHabilitado || !audioContextOperador) {
+    console.log("🔇 Audio todavía no habilitado");
+    return;
   }
+
+  const oscillator = audioContextOperador.createOscillator();
+
+  const gain = audioContextOperador.createGain();
+
+  oscillator.connect(gain);
+  gain.connect(audioContextOperador.destination);
+
+  oscillator.frequency.value = 850;
+
+  gain.gain.setValueAtTime(0.18, audioContextOperador.currentTime);
+
+  gain.gain.exponentialRampToValueAtTime(
+    0.001,
+    audioContextOperador.currentTime + 0.3,
+  );
+
+  oscillator.start();
+
+  oscillator.stop(audioContextOperador.currentTime + 0.3);
 }
 
 function hayMensajesNoLeidos() {
+  if (visitantesPendientes.size > 0) {
+    return true;
+  }
+
   for (const cantidad of mensajesNoLeidos.values()) {
     if (cantidad > 0) {
       return true;
@@ -695,6 +725,7 @@ socket.on("operador:conversaciones", (conversaciones) => {
 
     item.addEventListener("click", () => {
       visitanteSeleccionado = conversacion.visitorId;
+      visitantesPendientes.delete(conversacion.visitorId);
       operadorHeader.style.display = "flex";
       form.style.display = "flex";
       actualizarHeaderContacto(conversacion);
@@ -731,7 +762,6 @@ socket.on("operador:conversaciones", (conversaciones) => {
 socket.on("operador:mensaje-cliente", (data) => {
   console.log("Mensaje recibido en operador:", data);
 
-  // Si NO estamos viendo esta conversación
   if (data.visitorId !== visitanteSeleccionado) {
     const cantidadActual = mensajesNoLeidos.get(data.visitorId) || 0;
 
@@ -794,6 +824,13 @@ socket.on("operador:mensaje-confirmado", (data) => {
   });
 
   mensajeElement.appendChild(replyButton);
+});
+socket.on("operador:cliente-entro", (data) => {
+  console.log("👤 Un cliente entró:", data.visitorId);
+
+  visitantesPendientes.add(data.visitorId);
+
+  iniciarNotificacionRepetida();
 });
 
 // =========================
