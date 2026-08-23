@@ -757,7 +757,20 @@ socket.on("operador:conversaciones", (conversaciones) => {
       actualizarHeaderContacto(conversacionActual);
     }
   }
+  conversaciones.sort((a, b) => {
+    const aPendiente = visitantesPendientes.has(a.visitorId);
+    const bPendiente = visitantesPendientes.has(b.visitorId);
 
+    if (aPendiente && !bPendiente) {
+      return -1;
+    }
+
+    if (!aPendiente && bPendiente) {
+      return 1;
+    }
+
+    return (b.updatedAt || 0) - (a.updatedAt || 0);
+  });
   conversationList.innerHTML = "";
 
   conversaciones.forEach((conversacion) => {
