@@ -467,7 +467,7 @@ io.on("connection", (socket) => {
         const messageUid = crypto.randomUUID();
 
         const textoBienvenida =
-          "Holaa, como estas?👋✨ Decime un nombre o apodo asi te creo tu usuario😀";
+          "Holaa como estas?? soy Sofi❤️, Decime un nombre o apodo para tu usuario asi te lo creo🙌 ";
 
         const mensajeBienvenida = {
           id: messageUid,
