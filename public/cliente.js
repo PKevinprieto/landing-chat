@@ -62,9 +62,9 @@ async function revisarEstadoNotificaciones() {
 
     // Las bloqueó
     if (permission === "denied") {
-      pushPermissionBox.style.display = "flex";
+      pushPermissionBox.style.display = "none";
 
-      enablePushButton.textContent = "Notificaciones bloqueadas";
+      mostrarAvisoNotificacionesBloqueadas();
 
       return;
     }
@@ -816,3 +816,31 @@ input.addEventListener(
   },
   { once: true },
 );
+function mostrarAvisoNotificacionesBloqueadas() {
+  if (document.getElementById("push-blocked-notice")) {
+    return;
+  }
+
+  const aviso = document.createElement("div");
+
+  aviso.id = "push-blocked-notice";
+  aviso.className = "push-blocked-notice";
+
+  aviso.innerHTML = `
+    <span>
+      🔕 Las notificaciones están bloqueadas en tu navegador
+    </span>
+
+    <button type="button">
+      Entendido
+    </button>
+  `;
+
+  const boton = aviso.querySelector("button");
+
+  boton.addEventListener("click", () => {
+    aviso.remove();
+  });
+
+  document.body.appendChild(aviso);
+}
