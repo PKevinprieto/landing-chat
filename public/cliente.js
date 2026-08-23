@@ -6,7 +6,38 @@ const form = document.getElementById("message-form");
 const input = document.getElementById("message-input");
 const messages = document.getElementById("messages");
 const pushPermissionBox = document.getElementById("push-permission-box");
+const clienteAvatarImg = document.querySelector(".cliente-avatar img");
 
+const avatarViewer = document.getElementById("avatar-viewer");
+
+const avatarViewerImg = document.getElementById("avatar-viewer-img");
+
+const avatarViewerClose = document.getElementById("avatar-viewer-close");
+
+function abrirAvatar() {
+  avatarViewerImg.src = clienteAvatarImg.src;
+  avatarViewer.classList.add("active");
+}
+
+function cerrarAvatar() {
+  avatarViewer.classList.remove("active");
+}
+
+clienteAvatarImg.addEventListener("click", abrirAvatar);
+
+avatarViewerClose.addEventListener("click", cerrarAvatar);
+
+avatarViewer.addEventListener("click", (event) => {
+  if (event.target === avatarViewer) {
+    cerrarAvatar();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && avatarViewer.classList.contains("active")) {
+    cerrarAvatar();
+  }
+});
 const enablePushButton = document.getElementById("enable-push-button");
 async function revisarEstadoNotificaciones() {
   if (!("Notification" in window)) {
