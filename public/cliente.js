@@ -357,14 +357,13 @@ socket.on("cliente:mensaje-operador", (data) => {
     replyToUid: data.replyToUid || null,
     createdAt: data.createdAt,
   });
-  if (data.auto) {
-    reproducirSonidoNotificacion();
-  }
+  reproducirSonidoNotificacion();
 });
 socket.on("cliente:imagen-operador", (data) => {
   console.log("Imagen recibida del operador:", data);
 
   addImage(data.imageUrl, "received");
+  reproducirSonidoNotificacion();
 });
 socket.on("cliente:copy-operador", (data) => {
   console.log("Tarjeta copy recibida:", data);
@@ -390,6 +389,7 @@ socket.on("cliente:copy-operador", (data) => {
     },
     "received",
   );
+  reproducirSonidoNotificacion();
 });
 socket.on("cliente:link-operador", (data) => {
   console.log("Enlace recibido del operador:", data);
@@ -415,6 +415,7 @@ socket.on("cliente:link-operador", (data) => {
     },
     "received",
   );
+  reproducirSonidoNotificacion();
 });
 socket.on("cliente:mensaje-confirmado", (data) => {
   historialActual.push({
