@@ -580,8 +580,7 @@ io.on("connection", (socket) => {
       }));
 
       socket.emit("cliente:historial", historial);
-      io.emit("operador:conversaciones", obtenerConversacionesOrdenadas());
-
+      await actualizarConversacionesOperador();
       console.log("Cliente registrado");
       console.log("Visitor ID:", visitorId);
       io.emit("operador:cliente-entro", {

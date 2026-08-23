@@ -30,14 +30,41 @@ async function revisarEstadoNotificaciones() {
     const subscription = await registration.pushManager.getSubscription();
 
     if (subscription) {
-      // Ya tiene permiso + suscripción activa
+      const subscriptionData = subscription.toJSON();
+
+      try {
+        const saveResponse = await fetch("/api/push/subscribe", {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            visitorId: visitorId,
+            subscription: subscriptionData,
+          }),
+        });
+
+        const saveResult = await saveResponse.json();
+
+        if (!saveResponse.ok) {
+          throw new Error(
+            saveResult.message || "No se pudo restaurar la suscripción",
+          );
+        }
+
+        console.log("✅ Suscripción Push restaurada en servidor");
+      } catch (error) {
+        console.error("❌ Error restaurando suscripción Push:", error);
+      }
+
       pushPermissionBox.style.display = "none";
 
       console.log("🔔 Notificaciones ya estaban activadas");
 
       return;
     }
-
     // Tiene permiso, pero perdió la suscripción.
     // Mostramos el cartel para poder crearla otra vez.
     pushPermissionBox.style.display = "flex";
