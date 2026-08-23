@@ -764,6 +764,9 @@ socket.on("operador:conversaciones", (conversaciones) => {
     const item = document.createElement("div");
 
     item.classList.add("conversation");
+    if (visitantesPendientes.has(conversacion.visitorId)) {
+      item.classList.add("cliente-recien-entro");
+    }
 
     if (visitanteSeleccionado === conversacion.visitorId) {
       item.classList.add("active");
@@ -771,6 +774,7 @@ socket.on("operador:conversaciones", (conversaciones) => {
 
     const idCorto = conversacion.visitorId.slice(0, 8);
     const nombreContacto = conversacion.name || `Visitante ${idCorto}`;
+    const navegador = conversacion.browser || "Desconocido";
     let estadoConexion = "";
 
     if (conversacion.online) {
@@ -816,13 +820,20 @@ socket.on("operador:conversaciones", (conversaciones) => {
     item.innerHTML = `
   <div class="conversation-top">
     <strong>${nombreContacto}</strong>
-     ${estadoNotificaciones}
+    ${
+      visitantesPendientes.has(conversacion.visitorId)
+        ? `<span class="cliente-nuevo-badge">NUEVO</span>`
+        : ""
+    }
     <span>${hora}</span>
   </div>
 
- <div class="conversation-status">
+<div class="conversation-status">
   ${estadoConexion}
- 
+
+  <span class="conversation-device">
+    ${estadoNotificaciones} ${navegador}
+  </span>
 </div>
   <div class="conversation-bottom">
 
@@ -854,6 +865,13 @@ socket.on("operador:conversaciones", (conversaciones) => {
     item.addEventListener("click", () => {
       visitanteSeleccionado = conversacion.visitorId;
       visitantesPendientes.delete(conversacion.visitorId);
+      item.classList.remove("cliente-recien-entro");
+
+      const nuevoBadge = item.querySelector(".cliente-nuevo-badge");
+
+      if (nuevoBadge) {
+        nuevoBadge.remove();
+      }
       operadorHeader.style.display = "flex";
       form.style.display = "flex";
       actualizarHeaderContacto(conversacion);

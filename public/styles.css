@@ -2458,3 +2458,43 @@ body {
 
   cursor: pointer;
 }
+.conversation-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.conversation-device {
+  font-size: 12px;
+  color: #aebac1;
+  white-space: nowrap;
+}
+.cliente-recien-entro {
+  border-left: 4px solid #25d366;
+  background: rgba(37, 211, 102, 0.12);
+  animation: resaltarClienteNuevo 1.2s infinite alternate;
+}
+
+@keyframes resaltarClienteNuevo {
+  from {
+    background: rgba(37, 211, 102, 0.08);
+  }
+
+  to {
+    background: rgba(37, 211, 102, 0.22);
+  }
+}
+.cliente-nuevo-badge {
+  font-size: 10px;
+  font-weight: 700;
+
+  padding: 2px 6px;
+
+  border-radius: 10px;
+
+  background: #25d366;
+  color: white;
+
+  margin-left: 6px;
+}

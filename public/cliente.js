@@ -368,6 +368,7 @@ socket.on("connect", () => {
 
   socket.emit("cliente:registrar", {
     visitorId: visitorId,
+    browser: detectarNavegador(),
   });
   informarVisibilidadChat();
 });
@@ -843,4 +844,37 @@ function mostrarAvisoNotificacionesBloqueadas() {
   });
 
   document.body.appendChild(aviso);
+}
+function detectarNavegador() {
+  const ua = navigator.userAgent;
+
+  if (/SamsungBrowser/i.test(ua)) {
+    return "Samsung Internet";
+  }
+
+  if (/EdgA|EdgiOS|Edg/i.test(ua)) {
+    return "Microsoft Edge";
+  }
+
+  if (/OPR|Opera/i.test(ua)) {
+    return "Opera";
+  }
+
+  if (/Firefox|FxiOS/i.test(ua)) {
+    return "Firefox";
+  }
+
+  if (/CriOS/i.test(ua)) {
+    return "Google Chrome";
+  }
+
+  if (/Chrome/i.test(ua)) {
+    return "Google Chrome";
+  }
+
+  if (/Safari/i.test(ua)) {
+    return "Safari";
+  }
+
+  return "Otro navegador";
 }

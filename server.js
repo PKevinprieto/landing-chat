@@ -103,7 +103,8 @@ async function cargarConversacionesDesdeDB() {
         visitor_id,
         updated_at,
         last_seen,
-        name
+        name,
+        browser
       FROM conversations
       ORDER BY updated_at DESC
     `);
@@ -165,6 +166,7 @@ async function cargarConversacionesDesdeDB() {
         updatedAt: Number(fila.updated_at),
         lastSeen: fila.last_seen == null ? null : Number(fila.last_seen),
         name: fila.name,
+        browser: fila.browser || "Desconocido",
       });
     }
 
@@ -425,6 +427,7 @@ io.on("connection", (socket) => {
   socket.on("cliente:registrar", async (data) => {
     try {
       const visitorId = data.visitorId;
+      const browser = data.browser || "Desconocido";
       const ahora = Date.now();
       const esVisitanteNuevo = !conversaciones.has(visitorId);
 
@@ -434,24 +437,27 @@ io.on("connection", (socket) => {
 
       if (conversacionActual) {
         conversacionActual.lastSeen = ahora;
+        conversacionActual.browser = browser;
       }
 
       await db.query(
         `
-        INSERT INTO conversations (
-          visitor_id,
-          created_at,
-          updated_at,
-          last_seen
-        )
-        VALUES ($1, $2, $3, $4)
+  INSERT INTO conversations (
+    visitor_id,
+    created_at,
+    updated_at,
+    last_seen,
+    browser
+  )
+  VALUES ($1, $2, $3, $4, $5)
 
-        ON CONFLICT(visitor_id)
-        DO UPDATE SET
-          updated_at = EXCLUDED.updated_at,
-          last_seen = EXCLUDED.last_seen
-        `,
-        [visitorId, ahora, ahora, ahora],
+  ON CONFLICT(visitor_id)
+  DO UPDATE SET
+    updated_at = EXCLUDED.updated_at,
+    last_seen = EXCLUDED.last_seen,
+    browser = EXCLUDED.browser
+  `,
+        [visitorId, ahora, ahora, ahora, browser],
       );
 
       if (!conversaciones.has(visitorId)) {
@@ -461,6 +467,7 @@ io.on("connection", (socket) => {
           updatedAt: ahora,
           lastSeen: ahora,
           name: null,
+          browser,
         });
       }
       if (esVisitanteNuevo) {
@@ -580,13 +587,14 @@ io.on("connection", (socket) => {
       }));
 
       socket.emit("cliente:historial", historial);
-      await actualizarConversacionesOperador();
+
       console.log("Cliente registrado");
       console.log("Visitor ID:", visitorId);
       io.emit("operador:cliente-entro", {
         visitorId,
         timestamp: Date.now(),
       });
+      await actualizarConversacionesOperador();
       console.log("Socket ID:", socket.id);
       console.log("Clientes conectados:", clientesConectados.size);
     } catch (error) {
