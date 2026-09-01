@@ -19,7 +19,20 @@
         </div>
 
         <div class="cliente-header-info">
-          <h1>Sofi❤️</h1>
+          <div class="cliente-header-name">
+            <h1>Sofia❤️</h1>
+
+            <button
+              id="notification-button"
+              class="notification-button"
+              type="button"
+              aria-label="Activar notificaciones"
+              title="Activar notificaciones"
+            >
+              🔕 <span>Activar notificaciones</span>
+            </button>
+          </div>
+
           <p>En línea</p>
         </div>
 
@@ -29,18 +42,7 @@
       <section id="messages" class="cliente-messages">
         <div class="message received"></div>
       </section>
-      <div
-        id="push-permission-box"
-        class="push-permission-box"
-        style="display: none"
-      >
-        <div>
-          <strong>🔔 Activá las notificaciones</strong>
-          <p>Para recibir un bono de bienvenida!</p>
-        </div>
 
-        <button id="enable-push-button" type="button">Activar</button>
-      </div>
       <form id="message-form" class="cliente-form">
         <input type="file" id="image-input" accept="image/*" hidden />
 

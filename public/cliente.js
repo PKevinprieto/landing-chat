@@ -5,9 +5,8 @@ const socket = io();
 const form = document.getElementById("message-form");
 const input = document.getElementById("message-input");
 const messages = document.getElementById("messages");
-const pushPermissionBox = document.getElementById("push-permission-box");
 const clienteAvatarImg = document.querySelector(".cliente-avatar img");
-
+const notificationButton = document.getElementById("notification-button");
 const avatarViewer = document.getElementById("avatar-viewer");
 
 const avatarViewerImg = document.getElementById("avatar-viewer-img");
@@ -38,7 +37,6 @@ document.addEventListener("keydown", (event) => {
     cerrarAvatar();
   }
 });
-const enablePushButton = document.getElementById("enable-push-button");
 async function revisarEstadoNotificaciones() {
   try {
     if (
@@ -46,7 +44,7 @@ async function revisarEstadoNotificaciones() {
       !("serviceWorker" in navigator) ||
       !("PushManager" in window)
     ) {
-      pushPermissionBox.style.display = "none";
+      notificationButton.style.display = "none";
       return;
     }
 
@@ -54,44 +52,128 @@ async function revisarEstadoNotificaciones() {
 
     console.log("🔔 Estado notificaciones:", permission);
 
-    // Nunca respondió todavía
+    // Todavía no decidió
     if (permission === "default") {
-      pushPermissionBox.style.display = "flex";
+      notificationButton.innerHTML = "🔕 <span>Activar notificaciones</span>";
+      notificationButton.title = "Activar notificaciones";
       return;
     }
 
-    // Las bloqueó
+    // Las tiene bloqueadas
     if (permission === "denied") {
-      pushPermissionBox.style.display = "none";
-
-      mostrarAvisoNotificacionesBloqueadas();
-
+      notificationButton.innerHTML = "🔕 <span>Activar notificaciones</span>";
+      notificationButton.title = "Notificaciones bloqueadas";
       return;
     }
 
-    // A partir de acá permission === granted
+    // Ya están permitidas
+    notificationButton.innerHTML = "🔔 <span>Notificaciones activadas</span>";
+    notificationButton.title = "Notificaciones activadas";
+
     const registration = await navigator.serviceWorker.ready;
 
     let subscription = await registration.pushManager.getSubscription();
 
-    // Si tiene permiso pero perdió la suscripción,
-    // la recreamos automáticamente
+    // Si tenía permiso pero perdió la suscripción,
+    // la recuperamos automáticamente.
     if (!subscription) {
-      console.log("⚠️ Permiso concedido pero sin suscripción. Recreando...");
-
       const response = await fetch("/api/push/public-key");
-
       const data = await response.json();
 
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-
         applicationServerKey: urlBase64ToUint8Array(data.publicKey),
       });
     }
 
-    // Aunque ya existiera, la volvemos a guardar
-    // en PostgreSQL por si la DB fue limpiada.
+    // La sincronizamos nuevamente con PostgreSQL.
+    await fetch("/api/push/subscribe", {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify({
+        visitorId,
+        subscription: subscription.toJSON(),
+      }),
+    });
+
+    console.log("✅ Push sincronizado");
+  } catch (error) {
+    console.error("❌ Error revisando Push:", error);
+
+    notificationButton.innerHTML = "🔕 <span>Activar notificaciones</span>";
+  }
+}
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+
+  const rawData = window.atob(base64);
+
+  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
+}
+notificationButton.addEventListener("click", async () => {
+  console.log("🔔 Se tocó la campanita");
+
+  try {
+    if (
+      !("Notification" in window) ||
+      !("serviceWorker" in navigator) ||
+      !("PushManager" in window)
+    ) {
+      alert("Este navegador no soporta notificaciones.");
+      return;
+    }
+
+    let permission = Notification.permission;
+
+    // Si ya están activadas, no hacemos nada.
+    if (permission === "granted") {
+      notificationButton.innerHTML = "🔔 <span>Notificaciones activadas</span>";
+      notificationButton.title = "Notificaciones activadas";
+      return;
+    }
+
+    // Si están bloqueadas desde el navegador.
+    if (permission === "denied") {
+      mostrarAvisoNotificacionesBloqueadas();
+      return;
+    }
+
+    // Solamente acá aparece la pregunta del navegador.
+    permission = await Notification.requestPermission();
+
+    if (permission !== "granted") {
+      notificationButton.innerHTML = "🔕 <span>Activar notificaciones</span>";
+      return;
+    }
+
+    notificationButton.innerHTML = "🔔 <span>Notificaciones activadas</span>";
+    notificationButton.title = "Notificaciones activadas";
+
+    const registration = await navigator.serviceWorker.ready;
+
+    const response = await fetch("/api/push/public-key");
+
+    if (!response.ok) {
+      throw new Error("No se pudo obtener la clave Push");
+    }
+
+    const data = await response.json();
+
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(data.publicKey),
+      });
+    }
+
     const saveResponse = await fetch("/api/push/subscribe", {
       method: "POST",
 
@@ -106,161 +188,18 @@ async function revisarEstadoNotificaciones() {
     });
 
     if (!saveResponse.ok) {
-      throw new Error("No se pudo sincronizar Push con el servidor");
+      throw new Error("No se pudo guardar la suscripción");
     }
 
-    console.log("✅ Push sincronizado automáticamente");
-
-    pushPermissionBox.style.display = "none";
-  } catch (error) {
-    console.error("❌ Error revisando Push:", error);
-
-    pushPermissionBox.style.display = "flex";
-
-    enablePushButton.disabled = false;
-    enablePushButton.textContent = "Activar notificaciones";
-  }
-}
-function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-
-  const rawData = window.atob(base64);
-
-  return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
-}
-enablePushButton.addEventListener("click", async () => {
-  console.log("🔔 Se tocó Activar notificaciones");
-
-  // Evita tocarlo varias veces mientras trabaja
-  enablePushButton.disabled = true;
-  enablePushButton.textContent = "Activando...";
-
-  try {
-    // 1. Comprobar compatibilidad
-    if (!("Notification" in window)) {
-      throw new Error("Este navegador no soporta notificaciones");
-    }
-
-    if (!("serviceWorker" in navigator)) {
-      throw new Error("Este navegador no soporta Service Worker");
-    }
-
-    if (!("PushManager" in window)) {
-      throw new Error("Este navegador no soporta notificaciones Push");
-    }
-
-    // 2. Revisar permiso actual
-    let permission = Notification.permission;
-
-    console.log("Permiso actual de notificaciones:", permission);
-
-    // Solo pedir permiso si todavía nunca respondió
-    if (permission === "default") {
-      permission = await Notification.requestPermission();
-
-      console.log("Resultado del permiso:", permission);
-    }
-
-    // Si previamente las bloqueó, el navegador ya no
-    // vuelve a mostrar automáticamente la pregunta
-    if (permission === "denied") {
-      console.warn("🚫 Las notificaciones están bloqueadas");
-
-      enablePushButton.textContent = "Notificaciones bloqueadas";
-
-      alert(
-        "Las notificaciones están bloqueadas en este navegador. Tenés que habilitarlas desde la configuración del sitio.",
-      );
-
-      return;
-    }
-
-    if (permission !== "granted") {
-      throw new Error("No se concedió permiso para notificaciones");
-    }
-
-    // 3. Esperar Service Worker
-    console.log("Esperando Service Worker...");
-
-    const registration = await navigator.serviceWorker.ready;
-
-    console.log("✅ Service Worker listo:", registration.scope);
-
-    // 4. Obtener VAPID pública
-    const response = await fetch("/api/push/public-key");
-
-    if (!response.ok) {
-      throw new Error("No se pudo obtener la clave Push");
-    }
-
-    const data = await response.json();
-
-    if (!data.publicKey) {
-      throw new Error("El servidor no devolvió VAPID_PUBLIC_KEY");
-    }
-
-    // 5. Revisar si ya existe suscripción
-    let subscription = await registration.pushManager.getSubscription();
-
-    if (!subscription) {
-      console.log("No existe suscripción. Creando...");
-
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-
-        applicationServerKey: urlBase64ToUint8Array(data.publicKey),
-      });
-
-      console.log("✅ Nueva PushSubscription creada");
-    } else {
-      console.log("✅ Ya existía una PushSubscription");
-    }
-
-    // 6. Guardarla SIEMPRE en PostgreSQL
-    const subscriptionData = subscription.toJSON();
-
-    const saveResponse = await fetch("/api/push/subscribe", {
-      method: "POST",
-
-      headers: {
-        "Content-Type": "application/json",
-      },
-
-      body: JSON.stringify({
-        visitorId,
-        subscription: subscriptionData,
-      }),
-    });
-
-    const saveResult = await saveResponse.json();
-
-    if (!saveResponse.ok) {
-      throw new Error(
-        saveResult.message || "No se pudo guardar la suscripción",
-      );
-    }
-
-    console.log("✅ Suscripción Push guardada en servidor");
-
-    // 7. Ocultar cartel
-    pushPermissionBox.style.display = "none";
+    console.log("✅ Notificaciones activadas correctamente");
   } catch (error) {
     console.error("❌ Error activando notificaciones:", error);
 
-    enablePushButton.disabled = false;
-    enablePushButton.textContent = "Activar notificaciones";
-
+    notificationButton.innerHTML = "🔕 <span>Activar notificaciones</span>";
     alert(
-      "No se pudieron activar las notificaciones. Revisá los permisos del navegador e intentá nuevamente.",
+      "No se pudieron activar las notificaciones. Revisá los permisos del navegador.",
     );
-
-    return;
   }
-
-  enablePushButton.disabled = false;
-  enablePushButton.textContent = "Activar notificaciones";
 });
 const imageInput = document.getElementById("image-input");
 const imageButton = document.getElementById("image-button");
